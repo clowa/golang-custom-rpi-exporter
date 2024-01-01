@@ -1,0 +1,5 @@
+# Binary release
+/bin/*
+**main
+
+*.ignore*

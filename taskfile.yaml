@@ -1,0 +1,36 @@
+version: "3"
+
+tasks:
+  build:
+    cmds:
+      - GOOS="linux" GOARCH="arm64" go build -o ./bin/golang-custom-node-exporter .
+      - docker compose build
+    silent: true
+
+  up:
+    cmds:
+      - docker-compose up -d --force-recreate
+    silent: true
+
+  start:
+    deps:
+      - build
+      - up
+    silent: true
+
+  metrics:
+    deps:
+      - start
+    cmds:
+      - docker compose exec ubuntu curl http://localhost:8080/metrics
+      - docker compose down
+
+  down:
+    cmds:
+      - docker compose down --volumes
+    silent: true
+
+  attach:
+    cmds:
+      - docker compose exec ubuntu bash
+    silent: true

@@ -1,0 +1,16 @@
+## Start ubuntu container and mount the current directory
+version: "3"
+
+services:
+  ubuntu:
+    # image: ubuntu:22.04
+    build:
+      context: .
+      dockerfile: Dockerfile.devenv
+    volumes:
+      - .:/app
+      # - ./temp.ignore:/sys/class/thermal/thermal_zone0/temp:ro
+      - ./temp.ignore:/temp:ro
+    working_dir: /app
+    tty: true
+    command: ./bin/golang-custom-node-exporter
