@@ -3,7 +3,8 @@ version: "3"
 tasks:
   build:
     cmds:
-      - GOOS="linux" GOARCH="arm64" go build -o ./bin/golang-custom-rpi-exporter .
+      - GOOS="linux" GOARCH="arm64" go build -a -tags netgo -ldflags '-w -extldflags "-static"' -o ./bin/golang-custom-rpi-exporter .
+      # - GOOS="darwin" GOARCH="arm64" go build -a -tags netgo -ldflags '-w -extldflags "-static"' -o ./bin/golang-custom-rpi-exporter-darwin .
       - docker compose build
     silent: true
 
