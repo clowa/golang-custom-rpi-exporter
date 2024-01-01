@@ -1,4 +1,4 @@
-module github.com/clowa/golang-custom-node-exporter
+module github.com/clowa/golang-custom-rpi-exporter
 
 go 1.21.5
 

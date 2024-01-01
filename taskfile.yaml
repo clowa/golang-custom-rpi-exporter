@@ -3,7 +3,7 @@ version: "3"
 tasks:
   build:
     cmds:
-      - GOOS="linux" GOARCH="arm64" go build -o ./bin/golang-custom-node-exporter .
+      - GOOS="linux" GOARCH="arm64" go build -o ./bin/golang-custom-rpi-exporter .
       - docker compose build
     silent: true
 
@@ -22,7 +22,7 @@ tasks:
     deps:
       - start
     cmds:
-      - docker compose exec ubuntu curl http://localhost:8080/metrics
+      - docker compose exec ubuntu-devbox curl http://localhost:8080/metrics
       - docker compose down
 
   down:
@@ -32,5 +32,5 @@ tasks:
 
   attach:
     cmds:
-      - docker compose exec ubuntu bash
+      - docker compose exec ubuntu-devbox bash
     silent: true

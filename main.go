@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/clowa/golang-custom-node-exporter/internal/metrics"
+	"github.com/clowa/golang-custom-rpi-exporter/internal/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
