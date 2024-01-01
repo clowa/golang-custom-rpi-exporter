@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/clowa/golang-custom-rpi-exporter/internal/metrics"
@@ -34,7 +35,7 @@ func main() {
 
 	// Command line flags
 	enableTextfileCollectorFlag := flag.Bool("enable-textfile-collector", false, fmt.Sprintf("Exports metrics additionally as .prom file to %s", metricFilePath))
-
+	disableHttpCollectorFlag := flag.Bool("disable-http-collector", false, "Disables the default HTTP metrics endpoint")
 	flag.Parse()
 
 	// Create a non-global registry.
@@ -50,20 +51,34 @@ func main() {
 		}
 	}
 
+	var wg sync.WaitGroup
+	// Add a new goroutine to refresh metrics every 10 minutes
+	wg.Add(1)
 	go func() {
+		// Decrement the counter when the goroutine completes.
+		defer wg.Done()
+
 		for true {
 			log.Info("Refreshing metrics...")
 			m.RefreshMetrics()
 			if *enableTextfileCollectorFlag {
 				log.Info("Writing metrics to file: ", metricFilePath)
 				// Write latest metrics to file
-				prometheus.WriteToTextfile(metricFilePath, reg)
+				err := prometheus.WriteToTextfile(metricFilePath, reg)
+				if err != nil {
+					log.Fatal(err)
+				}
 			}
 			time.Sleep(10 * time.Minute)
 		}
 	}()
 
-	// Expose metrics and custom registry via an HTTP server.
-	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	if !*disableHttpCollectorFlag {
+		// Expose metrics and custom registry via an HTTP server.
+		http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
+		log.Fatal(http.ListenAndServe(":8080", nil))
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
 }
