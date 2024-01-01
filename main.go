@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -28,6 +30,12 @@ func createDirectoryIfNotExists(path string, mod fs.FileMode) error {
 }
 
 func main() {
+	const metricFilePath = metricFolder + "/custom_node_metrics.prom"
+
+	// Command line flags
+	enableTextfileCollectorFlag := flag.Bool("enable-textfile-collector", false, fmt.Sprintf("Exports metrics additionally as .prom file to %s", metricFilePath))
+
+	flag.Parse()
 
 	// Create a non-global registry.
 	reg := prometheus.NewRegistry()
@@ -35,14 +43,22 @@ func main() {
 	// Create new metrics and register them using the custom registry.
 	m := metrics.Init(reg)
 
-	createDirectoryIfNotExists(metricFolder, 0755)
-	metricFilePath := metricFolder + "/custom_node_metrics.prom"
+	if *enableTextfileCollectorFlag {
+		err := createDirectoryIfNotExists(metricFolder, 0755)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	go func() {
 		for true {
 			log.Info("Refreshing metrics...")
 			m.RefreshMetrics()
-			prometheus.WriteToTextfile(metricFilePath, reg)
+			if *enableTextfileCollectorFlag {
+				log.Info("Writing metrics to file: ", metricFilePath)
+				// Write latest metrics to file
+				prometheus.WriteToTextfile(metricFilePath, reg)
+			}
 			time.Sleep(10 * time.Minute)
 		}
 	}()

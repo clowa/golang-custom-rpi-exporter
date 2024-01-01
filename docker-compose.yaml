@@ -13,4 +13,5 @@ services:
       - ./temp.ignore:/temp:ro
     working_dir: /app
     tty: true
-    command: ./bin/golang-custom-rpi-exporter
+    # command: ./bin/golang-custom-rpi-exporter
+    command: ./bin/golang-custom-rpi-exporter -enable-textfile-collector
