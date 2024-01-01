@@ -8,8 +8,7 @@ You can find the docker images on [Docker Hub](https://hub.docker.com/r/clowa/go
 
 Supported platforms:
 
-- `linux/arm/v6`
-- `linux/arm/v7`
-- `linux/arm64/v8`
+- `linux/arm`
+- `linux/arm64`
 
 # Getting started

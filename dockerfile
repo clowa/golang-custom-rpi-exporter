@@ -24,7 +24,6 @@ COPY . .
 RUN CGO_ENABLED=0 \
     GOOS=${TARGETOS}  \
     GOARCH=${TARGETARCH}  \
-    GOARM=$(${TARGETVARIANT} | tr -d 'v')  \
     go build -a -tags netgo -ldflags '-w -extldflags "-static"' -o /golang-custom-rpi-exporter
 
 # Final harded image from scratch
