@@ -5,11 +5,12 @@
 ARG GO_VERSION="1.21"
 ARG ALPINE_VERSION="3.19"
 
+# Golang cross compiling statical binary
+# FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine${ALPINE_VERSION} as build
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine${ALPINE_VERSION} as build
+
 ARG TARGETOS
 ARG TARGETARCH
-
-# Golang cross compiling statical binary
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine${ALPINE_VERSION} as build
 
 WORKDIR /build
 
