@@ -29,7 +29,7 @@ RUN CGO_ENABLED=0 \
 # Final harded image from scratch
 # Build from google distroless projekt image
 # FROM gcr.io/distroless/static AS final 
-FROM scratch
+FROM ubuntu:22.04 AS final
 COPY --from=build /golang-custom-rpi-exporter /golang-custom-rpi-exporter
 
 EXPOSE 8080
