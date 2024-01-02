@@ -37,7 +37,7 @@ func Init(reg prometheus.Registerer) *metrics {
 			Name:      "cpu_temperature_celsius",
 			Help:      "Current temperature of the CPU in degrees Celsius.",
 		},
-			[]string{"nodename"},
+			[]string{"instance"},
 		),
 		RebootRequired: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -45,7 +45,7 @@ func Init(reg prometheus.Registerer) *metrics {
 				Name:      "reboot_required",
 				Help:      "Wether a Node reboot is required for software updates.",
 			},
-			[]string{"nodename"},
+			[]string{"instance"},
 		),
 		AptUpgradablePackageCount: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -53,7 +53,7 @@ func Init(reg prometheus.Registerer) *metrics {
 				Name:      "upgradable_packages",
 				Help:      "Number of upgradable packages.",
 			},
-			[]string{"nodename"},
+			[]string{"instance"},
 		),
 		AptPackageCacheTimestamps: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -61,7 +61,7 @@ func Init(reg prometheus.Registerer) *metrics {
 				Name:      "package_cache_timestamp_seconds",
 				Help:      "Unix timestamp of the package cache in seconds.",
 			},
-			[]string{"nodename"},
+			[]string{"instance"},
 		),
 	}
 
