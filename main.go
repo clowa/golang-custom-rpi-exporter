@@ -69,7 +69,7 @@ func main() {
 					log.Fatal(err)
 				}
 			}
-			time.Sleep(10 * time.Minute)
+			time.Sleep(1 * time.Minute)
 		}
 	}()
 
