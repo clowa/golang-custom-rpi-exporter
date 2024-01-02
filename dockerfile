@@ -33,4 +33,5 @@ FROM ubuntu:22.04 AS final
 COPY --from=build /golang-custom-rpi-exporter /golang-custom-rpi-exporter
 
 EXPOSE 8080
+VOLUME [ "/tmp", "/var/run", "/sys/class/thermal/thermal_zone0/temp", "/var/lib/apt/lists" ]
 CMD [ "/golang-custom-rpi-exporter" ]
