@@ -39,7 +39,7 @@ func main() {
 	flag.Parse()
 
 	// Create a non-global registry.
-	reg := prometheus.NewRegistry()
+	reg := prometheus.DefaultRegisterer
 
 	// Create new metrics and register them using the custom registry.
 	m := metrics.Init(reg)
@@ -64,7 +64,7 @@ func main() {
 			if *enableTextfileCollectorFlag {
 				log.Info("Writing metrics to file: ", metricFilePath)
 				// Write latest metrics to file
-				err := prometheus.WriteToTextfile(metricFilePath, reg)
+				err := prometheus.WriteToTextfile(metricFilePath, prometheus.DefaultGatherer)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -75,7 +75,7 @@ func main() {
 
 	if !*disableHttpCollectorFlag {
 		// Expose metrics and custom registry via an HTTP server.
-		http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
+		http.Handle("/metrics", promhttp.Handler())
 		log.Fatal(http.ListenAndServe(":8080", nil))
 	}
 
