@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/clowa/golang-custom-rpi-exporter/internal/metrics"
+	"github.com/clowa/golang-custom-rpi-exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -42,7 +42,7 @@ func main() {
 	reg := prometheus.DefaultRegisterer
 
 	// Create new metrics and register them using the custom registry.
-	m := metrics.Init(reg)
+	m := exporter.Init(reg)
 
 	if *enableTextfileCollectorFlag {
 		err := createDirectoryIfNotExists(metricFolder, 0755)
