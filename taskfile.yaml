@@ -6,18 +6,14 @@ tasks:
       - GOOS="linux" GOARCH="arm64" go build -a -tags netgo -ldflags '-w -extldflags "-static"' -o ./bin/golang-custom-rpi-exporter .
       # - GOOS="darwin" GOARCH="arm64" go build -a -tags netgo -ldflags '-w -extldflags "-static"' -o ./bin/golang-custom-rpi-exporter-darwin .
       - docker compose build
-    silent: true
-
-  up:
-    cmds:
-      - docker-compose up -d --force-recreate
-    silent: true
+    silent: false
 
   start:
     deps:
       - build
-      - up
-    silent: true
+    cmds:
+      - docker-compose up -d --force-recreate
+    silent: false
 
   metrics:
     deps:
@@ -29,9 +25,9 @@ tasks:
   down:
     cmds:
       - docker compose down --volumes
-    silent: true
+    silent: false
 
   attach:
     cmds:
       - docker compose exec ubuntu-devbox bash
-    silent: true
+    silent: false
