@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -16,6 +17,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var (
+	version = "dev"
+)
+
 const (
 	exporterDisplayName = "Custom Raspberry Pi Exporter"
 	exporterName        = "custom_rpi_exporter"
@@ -23,6 +28,7 @@ const (
 
 // Structure to hold the configuration of the exporter
 type config struct {
+	version                     *bool
 	listenAddress               *string
 	metricPath                  *string
 	httpCollectorDisabledFlag   *bool
@@ -32,6 +38,11 @@ type config struct {
 
 func main() {
 	config := readFlags()
+
+	if *config.version {
+		fmt.Printf("You are running %s version %s\n", exporterDisplayName, version)
+		os.Exit(0)
+	}
 
 	if *config.textFileExporterEnabledFlag {
 		metricFolder := filepath.Dir(*config.textFileExporterDestination)
@@ -64,6 +75,8 @@ func main() {
 // readFlags reads the command line flags and returns a config struct.
 func readFlags() *config {
 	var config config
+
+	config.version = flag.Bool("version", false, "Print version information.")
 
 	config.listenAddress = flag.String("address", ":8080", "Address on which to expose metrics.")
 	config.metricPath = flag.String("path", "/metrics", "Path under which to expose metrics.")

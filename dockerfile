@@ -11,6 +11,7 @@ FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine${ALPINE_VERSION} as b
 
 ARG TARGETOS
 ARG TARGETARCH
+ARG APP_VERSION
 
 WORKDIR /build
 
@@ -25,7 +26,7 @@ COPY . .
 RUN CGO_ENABLED=0 \
     GOOS=${TARGETOS}  \
     GOARCH=${TARGETARCH}  \
-    go build -a -tags netgo -ldflags '-w -extldflags "-static"' -o /golang-custom-rpi-exporter
+    go build -a -tags netgo -ldflags "-X main.version=${APP_VERSION} -w -extldflags '-static'" -o /golang-custom-rpi-exporter
 
 # Final harded image from scratch
 # Build from google distroless projekt image
@@ -33,6 +34,7 @@ RUN CGO_ENABLED=0 \
 FROM ubuntu:22.04 AS final
 COPY --from=build /golang-custom-rpi-exporter /golang-custom-rpi-exporter
 
+USER nobody
 EXPOSE 8080
 VOLUME [ "/tmp", "/var/run", "/sys/class/thermal/thermal_zone0/temp", "/var/lib/apt/lists" ]
 CMD [ "/golang-custom-rpi-exporter" ]
