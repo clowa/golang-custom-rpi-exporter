@@ -12,3 +12,9 @@ Supported platforms:
 - `linux/arm64`
 
 # Getting started
+
+# To-Do
+
+- [ ] Improve performance. Currently the exporter takes about ~4 seconds to scrape all metrics. Perhaps due to Filesystem i/o.
+- [ ] Add more metrics
+  - [ ] Subset of information from [`vcgencmd`](https://www.raspberrypi.com/documentation/computers/os.html#vcgencmd)
