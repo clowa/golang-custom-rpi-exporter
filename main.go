@@ -18,7 +18,10 @@ import (
 )
 
 var (
-	version = "dev"
+	version   = "dev"
+	commit    = "none"
+	buildDate = "none"
+	builtBy   = "none"
 )
 
 const (
@@ -40,7 +43,11 @@ func main() {
 	config := readFlags()
 
 	if *config.version {
-		fmt.Printf("You are running %s version %s\n", exporterDisplayName, version)
+		fmt.Printf("Version Information:\n")
+		fmt.Printf("  Version: %s\n", version)
+		fmt.Printf("  Commit: %s\n", commit)
+		fmt.Printf("  Build Date: %s\n", buildDate)
+		fmt.Printf("  Built By: %s\n", builtBy)
 		os.Exit(0)
 	}
 

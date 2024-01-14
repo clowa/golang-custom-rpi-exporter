@@ -1,0 +1,110 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+version: 1
+
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+    # you may remove this if you don't need go generate
+    # - go generate ./...
+
+builds:
+  - binary: "golang-custom-rpi-exporter"
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - arm
+      - arm64
+    goarm:
+      - "7"
+    tags:
+      - netgo
+    ldflags:
+      - "extldflags '-static' -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.buildDate={{.Date}} -X main.builtBy=goreleaser"
+
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .Binary }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+
+release:
+  github:
+    owner: clowa
+    name: golang-custom-rpi-exporter
+
+dockers:
+  - image_templates:
+      - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-armv7"
+    use: buildx
+    goos: linux
+    goarch: arm
+    goarm: "7"
+    dockerfile: "goreleaser.dockerfile"
+    build_flag_templates:
+      - "--platform=linux/arm/v7"
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+  - image_templates:
+      - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-arm64v8"
+    use: buildx
+    goos: linux
+    goarch: arm64
+    dockerfile: "goreleaser.dockerfile"
+    build_flag_templates:
+      - "--platform=linux/arm64/v8"
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+
+docker_manifests:
+  - name_template: "clowa/golang-custom-rpi-exporter:dev"
+    image_templates:
+      - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-armv7"
+      - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-arm64v8"
+  # - name_template: "clowa/golang-custom-rpi-exporter:latest"
+  #   image_templates:
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-armv7"
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-arm64v8"
+  # - name_template: "clowa/golang-custom-rpi-exporter:{{ .Branch }}"
+  #   image_templates:
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-armv7"
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-arm64v8"
+  # - name_template: "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}"
+  #   image_templates:
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-armv7"
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-arm64v8"
+  # - name_template: "clowa/golang-custom-rpi-exporter:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+  #   image_templates:
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-armv7"
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-arm64v8"
+  # - name_template: "clowa/golang-custom-rpi-exporter:{{ .Major }}.{{ .Minor }}"
+  #   image_templates:
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-armv7"
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-arm64v8"
+  # - name_template: "clowa/golang-custom-rpi-exporter:{{ .Major }}"
+  #   image_templates:
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-armv7"
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-arm64v8"
+  # - name_template: "clowa/golang-custom-rpi-exporter:dev"
+  #   image_templates:
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-armv7"
+  #     - "clowa/golang-custom-rpi-exporter:sha-{{ .ShortCommit }}-arm64v8"
