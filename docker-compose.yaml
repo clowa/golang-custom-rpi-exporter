@@ -6,7 +6,7 @@ services:
     # image: ubuntu:22.04
     build:
       context: .
-      dockerfile: dockerfile.devenv
+      dockerfile: devenv.dockerfile
     volumes:
       - .:/app
       # - ./temp.ignore:/sys/class/thermal/thermal_zone0/temp:ro
