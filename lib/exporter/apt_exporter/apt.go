@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/arduino/go-apt-client"
+	"github.com/clowa/golang-custom-rpi-exporter/lib/cache"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -48,7 +49,10 @@ func (collector *aptCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect implements required collect function for all promehteus collectors
 func (collector *aptCollector) Collect(ch chan<- prometheus.Metric) {
 	// Get labels for metrics
-	hostname := os.Getenv("HOSTNAME")
+	labels := cache.GetLabelCache()
+	if labels.NeedsRefresh() {
+		labels.Refresh()
+	}
 
 	// Implement logic here to determine proper metric value to return to prometheus
 	// for each descriptor or call other functions that do so.
@@ -67,8 +71,8 @@ func (collector *aptCollector) Collect(ch chan<- prometheus.Metric) {
 
 	//Write latest value for each metric in the prometheus metric channel.
 	//Note that you can pass CounterValue, GaugeValue, or UntypedValue types here.
-	ch <- prometheus.MustNewConstMetric(collector.packageCacheTimestamp, prometheus.GaugeValue, float64(packageCacheTimestamps), hostname)
-	ch <- prometheus.MustNewConstMetric(collector.upgradablePackageCount, prometheus.GaugeValue, float64(upgradablePackageCount), hostname)
+	ch <- prometheus.MustNewConstMetric(collector.packageCacheTimestamp, prometheus.GaugeValue, float64(packageCacheTimestamps), labels.Hostname)
+	ch <- prometheus.MustNewConstMetric(collector.upgradablePackageCount, prometheus.GaugeValue, float64(upgradablePackageCount), labels.Hostname)
 }
 
 // getUpgradablePackageCount returns the number of upgradable packages

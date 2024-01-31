@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/clowa/golang-custom-rpi-exporter/exporter/apt_exporter"
-	"github.com/clowa/golang-custom-rpi-exporter/exporter/rpi_exporter"
+	"github.com/clowa/golang-custom-rpi-exporter/lib/exporter/apt_exporter"
+	"github.com/clowa/golang-custom-rpi-exporter/lib/exporter/rpi_exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"

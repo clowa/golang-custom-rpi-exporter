@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/clowa/golang-custom-rpi-exporter/lib/cache"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -48,7 +49,10 @@ func (collector *rpiCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect implements required collect function for all promehteus collectors
 func (collector *rpiCollector) Collect(ch chan<- prometheus.Metric) {
 	// Get labels for metrics
-	hostname := os.Getenv("HOSTNAME")
+	labels := cache.GetLabelCache()
+	if labels.NeedsRefresh() {
+		labels.Refresh()
+	}
 
 	// Implement logic here to determine proper metric value to return to prometheus
 	// for each descriptor or call other functions that do so.
@@ -64,8 +68,8 @@ func (collector *rpiCollector) Collect(ch chan<- prometheus.Metric) {
 
 	//Write latest value for each metric in the prometheus metric channel.
 	//Note that you can pass CounterValue, GaugeValue, or UntypedValue types here.
-	ch <- prometheus.MustNewConstMetric(collector.cpuTemperature, prometheus.GaugeValue, float64(cpuTemp), hostname)
-	ch <- prometheus.MustNewConstMetric(collector.rebootRequired, prometheus.GaugeValue, float64(rebootRequired), hostname)
+	ch <- prometheus.MustNewConstMetric(collector.cpuTemperature, prometheus.GaugeValue, float64(cpuTemp), labels.Hostname)
+	ch <- prometheus.MustNewConstMetric(collector.rebootRequired, prometheus.GaugeValue, float64(rebootRequired), labels.Hostname)
 }
 
 // getRebootRequired returns 1 if a reboot is required for software updates, 0 otherwise
