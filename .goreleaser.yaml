@@ -11,7 +11,8 @@ before:
     # - go generate ./...
 
 builds:
-  - binary: "golang-custom-rpi-exporter"
+  - id: default
+    binary: "golang-custom-rpi-exporter"
     env:
       - CGO_ENABLED=0
     goos:

@@ -9,9 +9,12 @@ services:
       dockerfile: devenv.dockerfile
     volumes:
       - .:/app
+      - ./dist/default_linux_arm64/golang-custom-rpi-exporter:/usr/local/bin/golang-custom-rpi-exporter
       # - ./temp.ignore:/sys/class/thermal/thermal_zone0/temp:ro
       - ./temp.ignore:/temp:ro
+    environment:
+      - HOSTNAME=DevContainer
     working_dir: /app
     tty: true
-    command: ./bin/golang-custom-rpi-exporter-linux-arm64 -enable-textfile-collector
-    # command: ./bin/golang-custom-rpi-exporter-linux-arm64 -enable-textfile-collector -disable-http-collector
+    command: /usr/local/bin/golang-custom-rpi-exporter -enable-textfile-collector
+    # command: ./bin/golang-custom-rpi-exporter -enable-textfile-collector -disable-http-collector
