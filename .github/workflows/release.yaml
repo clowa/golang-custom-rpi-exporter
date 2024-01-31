@@ -40,11 +40,20 @@ jobs:
           username: ${{ vars.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Run GoReleaser
+      - name: Build with GoReleaser
+        if: success() && !startsWith(github.ref, 'refs/tags/')
         uses: goreleaser/goreleaser-action@v5
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean --snapshot
+          args: release --snapshot --clean --skip publish
+
+      - name: Release with GoReleaser
+        if: success() && startsWith(github.ref, 'refs/tags/')
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
