@@ -1,0 +1,67 @@
+name: Build docker images
+
+on:
+  push:
+    branches:
+      - main
+      - "v*"
+      - "feature/*"
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+env:
+  GO_VERSION: 1.21
+  IMAGE_NAME: ${{ vars.DOCKER_USERNAME }}/${{ github.event.repository.name }}
+
+jobs:
+  docker-buildx:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "${{ env.GO_VERSION }}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Available platforms
+        run: echo ${{ steps.buildx.outputs.platforms }}
+
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build with GoReleaser
+        if: success() && !startsWith(github.ref, 'refs/tags/')
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --snapshot --clean --skip publish
+
+      - name: Release with GoReleaser
+        if: success() && startsWith(github.ref, 'refs/tags/')
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
