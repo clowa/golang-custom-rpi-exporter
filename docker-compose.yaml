@@ -10,8 +10,8 @@ services:
     volumes:
       - .:/app
       - ./dist/default_linux_arm64/golang-custom-rpi-exporter:/usr/local/bin/golang-custom-rpi-exporter
-      # - ./temp.ignore:/sys/class/thermal/thermal_zone0/temp:ro
-      - ./temp.ignore:/temp:ro
+      # - ./temperature.ignore:/sys/class/thermal/thermal_zone0/temp:ro
+      - ./temperature.ignore:/temperature:ro
     environment:
       - HOSTNAME=DevContainer
     working_dir: /app
