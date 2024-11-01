@@ -4,7 +4,7 @@ go 1.21.5
 
 require (
 	github.com/arduino/go-apt-client v0.0.0-20190812130613-5613f843fdc8
-	github.com/prometheus/client_golang v1.20.4
+	github.com/prometheus/client_golang v1.20.5
 	github.com/sirupsen/logrus v1.9.3
 )
 
