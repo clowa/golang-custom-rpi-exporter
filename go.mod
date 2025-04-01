@@ -1,10 +1,9 @@
 module github.com/clowa/golang-custom-rpi-exporter
 
 go 1.21.5
-
 require (
 	github.com/arduino/go-apt-client v0.0.0-20190812130613-5613f843fdc8
-	github.com/prometheus/client_golang v1.21.0
+	github.com/prometheus/client_golang v1.21.1
 	github.com/sirupsen/logrus v1.9.3
 )
 
