@@ -2,32 +2,71 @@ package cache
 
 import (
 	"os"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 )
 
-type labelCache struct {
-	needsRefresh bool
-	Hostname     string
+type Labels struct {
+	Hostname string
 }
 
-var globalLabelCache = labelCache{
-	needsRefresh: true,
-	Hostname:     "",
+type labelCache struct {
+	mu           sync.RWMutex
+	hostnameFunc func() string
+
+	needsRefresh bool
+	hostname     string
+}
+
+var globalLabelCache = newLabelCache(getHostname)
+
+func newLabelCache(hostnameFunc func() string) *labelCache {
+	return &labelCache{
+		hostnameFunc: hostnameFunc,
+		needsRefresh: true,
+		hostname:     "",
+	}
 }
 
 func GetLabelCache() *labelCache {
-	return &globalLabelCache
+	return globalLabelCache
 }
 
 func (l *labelCache) NeedsRefresh() bool {
-	return globalLabelCache.needsRefresh
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	return l.needsRefresh
 }
 
 func (l *labelCache) Refresh() {
 	log.Info("Refreshing label cache")
+
+	hostname := l.hostnameFunc()
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	l.needsRefresh = false
-	l.Hostname = getHostname()
+	l.hostname = hostname
+}
+
+func (l *labelCache) GetLabels() Labels {
+	l.mu.RLock()
+	needsRefresh := l.needsRefresh
+	hostname := l.hostname
+	l.mu.RUnlock()
+
+	if needsRefresh {
+		l.Refresh()
+
+		l.mu.RLock()
+		hostname = l.hostname
+		l.mu.RUnlock()
+	}
+
+	return Labels{Hostname: hostname}
 }
 
 func getHostname() string {

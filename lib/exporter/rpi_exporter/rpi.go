@@ -2,7 +2,6 @@ package rpi_exporter
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -15,6 +14,11 @@ import (
 type rpiCollector struct {
 	rebootRequired *prometheus.Desc
 	cpuTemperature *prometheus.Desc
+	scrapeSuccess  *prometheus.Desc
+
+	getHostname       func() string
+	getRebootRequired func() int
+	getCPUTemperature func() (float64, error)
 }
 
 func Register() {
@@ -34,6 +38,13 @@ func newRpiCollector() *rpiCollector {
 			"Current temperature of the CPU in degrees Celsius.",
 			[]string{"instance"}, nil,
 		),
+		scrapeSuccess: prometheus.NewDesc(prometheus.BuildFQName(namespace, "rpi", "scrape_success"),
+			"Whether the rpi collector scrape was successful (1 for success, 0 for failure).",
+			[]string{"instance"}, nil,
+		),
+		getHostname:       func() string { return cache.GetLabelCache().GetLabels().Hostname },
+		getRebootRequired: getRebootRequired,
+		getCPUTemperature: getCpuTemperature,
 	}
 }
 
@@ -44,32 +55,28 @@ func (collector *rpiCollector) Describe(ch chan<- *prometheus.Desc) {
 	//Update this section with the each metric you create for a given collector
 	ch <- collector.rebootRequired
 	ch <- collector.cpuTemperature
+	ch <- collector.scrapeSuccess
 }
 
 // Collect implements required collect function for all promehteus collectors
 func (collector *rpiCollector) Collect(ch chan<- prometheus.Metric) {
-	// Get labels for metrics
-	labels := cache.GetLabelCache()
-	if labels.NeedsRefresh() {
-		labels.Refresh()
-	}
+	instance := collector.getHostname()
+	scrapeSuccess := 1.0
 
-	// Implement logic here to determine proper metric value to return to prometheus
-	// for each descriptor or call other functions that do so.
-
-	// Reboot required
-	rebootRequired := getRebootRequired()
-
-	// CPU temperature
-	cpuTemp, err := getCpuTemperature()
+	rebootRequired := collector.getRebootRequired()
+	cpuTemp, err := collector.getCPUTemperature()
 	if err != nil {
-		log.Fatal(err)
+		scrapeSuccess = 0
+		log.WithError(err).Error("rpi collector scrape failed")
 	}
 
 	//Write latest value for each metric in the prometheus metric channel.
 	//Note that you can pass CounterValue, GaugeValue, or UntypedValue types here.
-	ch <- prometheus.MustNewConstMetric(collector.cpuTemperature, prometheus.GaugeValue, float64(cpuTemp), labels.Hostname)
-	ch <- prometheus.MustNewConstMetric(collector.rebootRequired, prometheus.GaugeValue, float64(rebootRequired), labels.Hostname)
+	if err == nil {
+		ch <- prometheus.MustNewConstMetric(collector.cpuTemperature, prometheus.GaugeValue, float64(cpuTemp), instance)
+	}
+	ch <- prometheus.MustNewConstMetric(collector.rebootRequired, prometheus.GaugeValue, float64(rebootRequired), instance)
+	ch <- prometheus.MustNewConstMetric(collector.scrapeSuccess, prometheus.GaugeValue, scrapeSuccess, instance)
 }
 
 // getRebootRequired returns 1 if a reboot is required for software updates, 0 otherwise
@@ -89,14 +96,18 @@ func getCpuTemperature() (float64, error) {
 	const temperatureFilePath = "/sys/class/thermal/thermal_zone0/temp"
 
 	// Check if the file exists
-	if _, err := os.Stat(temperatureFilePath); os.IsNotExist(err) {
-		return 0, fmt.Errorf("File '%s' does not exist.\n", temperatureFilePath)
+	if _, err := os.Stat(temperatureFilePath); err != nil {
+		if os.IsNotExist(err) {
+			return 0, fmt.Errorf("temperature file %q does not exist: %w", temperatureFilePath, err)
+		}
+
+		return 0, fmt.Errorf("failed to stat temperature file %q: %w", temperatureFilePath, err)
 	}
 
 	// Read the file content
-	content, err := ioutil.ReadFile(temperatureFilePath)
+	content, err := os.ReadFile(temperatureFilePath)
 	if err != nil {
-		return 0, fmt.Errorf("Error reading file: %s\n", err)
+		return 0, fmt.Errorf("failed to read temperature file %q: %w", temperatureFilePath, err)
 	}
 
 	// Convert file content to string and remove trailing newline characters
@@ -106,7 +117,7 @@ func getCpuTemperature() (float64, error) {
 	milliDegrees, err := strconv.Atoi(fileContent)
 
 	if err != nil {
-		return 0, fmt.Errorf("Error converting string to integer: %s\n", err)
+		return 0, fmt.Errorf("failed to parse temperature value %q: %w", fileContent, err)
 	}
 
 	// Convert millidegrees to degrees (format as a string)

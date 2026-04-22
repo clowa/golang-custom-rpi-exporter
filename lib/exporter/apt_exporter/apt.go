@@ -3,6 +3,8 @@ package apt_exporter
 import (
 	"fmt"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/arduino/go-apt-client"
 	"github.com/clowa/golang-custom-rpi-exporter/lib/cache"
@@ -10,9 +12,75 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const defaultAPTCacheTTL = 30 * time.Second
+
+type aptSnapshot struct {
+	upgradablePackageCount int
+	packageCacheTimestamp  int64
+}
+
+type aptQueryCache struct {
+	mu        sync.RWMutex
+	ttl       time.Duration
+	snapshot  aptSnapshot
+	fetchedAt time.Time
+	hasValue  bool
+}
+
+func newAPTQueryCache(ttl time.Duration) *aptQueryCache {
+	return &aptQueryCache{ttl: ttl}
+}
+
+func (c *aptQueryCache) get(fetch func() (aptSnapshot, error)) (aptSnapshot, error) {
+	now := time.Now()
+
+	c.mu.RLock()
+	if c.hasValue && now.Sub(c.fetchedAt) < c.ttl {
+		snapshot := c.snapshot
+		c.mu.RUnlock()
+		return snapshot, nil
+	}
+	c.mu.RUnlock()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.hasValue && time.Since(c.fetchedAt) < c.ttl {
+		return c.snapshot, nil
+	}
+
+	snapshot, err := fetch()
+	if err != nil {
+		if c.hasValue {
+			return c.snapshot, err
+		}
+
+		return aptSnapshot{}, err
+	}
+
+	c.snapshot = snapshot
+	c.fetchedAt = now
+	c.hasValue = true
+
+	return snapshot, nil
+}
+
+func (c *aptQueryCache) hasSnapshot() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.hasValue
+}
+
 type aptCollector struct {
 	packageCacheTimestamp  *prometheus.Desc
 	upgradablePackageCount *prometheus.Desc
+	scrapeSuccess          *prometheus.Desc
+
+	aptCache      *aptQueryCache
+	getHostname   func() string
+	getUpgradable func() (int, error)
+	getCacheTS    func() (int64, error)
 }
 
 func Register() {
@@ -34,6 +102,14 @@ func newAptCollector() *aptCollector {
 			"Number of upgradable packages.",
 			[]string{"instance"}, nil,
 		),
+		scrapeSuccess: prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "scrape_success"),
+			"Whether the apt collector scrape was successful (1 for success, 0 for failure).",
+			[]string{"instance"}, nil,
+		),
+		aptCache:      newAPTQueryCache(defaultAPTCacheTTL),
+		getHostname:   func() string { return cache.GetLabelCache().GetLabels().Hostname },
+		getUpgradable: getUpgradablePackageCount,
+		getCacheTS:    getPackageCacheTimestamps,
 	}
 }
 
@@ -44,35 +120,43 @@ func (collector *aptCollector) Describe(ch chan<- *prometheus.Desc) {
 	//Update this section with the each metric you create for a given collector
 	ch <- collector.packageCacheTimestamp
 	ch <- collector.upgradablePackageCount
+	ch <- collector.scrapeSuccess
 }
 
 // Collect implements required collect function for all promehteus collectors
 func (collector *aptCollector) Collect(ch chan<- prometheus.Metric) {
-	// Get labels for metrics
-	labels := cache.GetLabelCache()
-	if labels.NeedsRefresh() {
-		labels.Refresh()
-	}
+	instance := collector.getHostname()
 
-	// Implement logic here to determine proper metric value to return to prometheus
-	// for each descriptor or call other functions that do so.
+	scrapeSuccess := 1.0
+	snapshot, err := collector.aptCache.get(func() (aptSnapshot, error) {
+		upgradablePackageCount, upgradableErr := collector.getUpgradable()
+		if upgradableErr != nil {
+			return aptSnapshot{}, upgradableErr
+		}
 
-	// Number of upgradable packages
-	upgradablePackageCount, err := getUpgradablePackageCount()
+		packageCacheTimestamps, packageCacheErr := collector.getCacheTS()
+		if packageCacheErr != nil {
+			return aptSnapshot{}, packageCacheErr
+		}
+
+		return aptSnapshot{
+			upgradablePackageCount: upgradablePackageCount,
+			packageCacheTimestamp:  packageCacheTimestamps,
+		}, nil
+	})
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Package cache timestamps
-	packageCacheTimestamps, err := getPackageCacheTimestamps()
-	if err != nil {
-		log.Fatal(err)
+		scrapeSuccess = 0
+		log.WithError(err).Error("apt collector scrape failed")
 	}
 
 	//Write latest value for each metric in the prometheus metric channel.
 	//Note that you can pass CounterValue, GaugeValue, or UntypedValue types here.
-	ch <- prometheus.MustNewConstMetric(collector.packageCacheTimestamp, prometheus.GaugeValue, float64(packageCacheTimestamps), labels.Hostname)
-	ch <- prometheus.MustNewConstMetric(collector.upgradablePackageCount, prometheus.GaugeValue, float64(upgradablePackageCount), labels.Hostname)
+	if err == nil || collector.aptCache.hasSnapshot() {
+		ch <- prometheus.MustNewConstMetric(collector.packageCacheTimestamp, prometheus.GaugeValue, float64(snapshot.packageCacheTimestamp), instance)
+		ch <- prometheus.MustNewConstMetric(collector.upgradablePackageCount, prometheus.GaugeValue, float64(snapshot.upgradablePackageCount), instance)
+	}
+
+	ch <- prometheus.MustNewConstMetric(collector.scrapeSuccess, prometheus.GaugeValue, scrapeSuccess, instance)
 }
 
 // getUpgradablePackageCount returns the number of upgradable packages
@@ -91,8 +175,12 @@ func getPackageCacheTimestamps() (int64, error) {
 
 	// Get File Stats
 	stats, err := os.Stat(packageCacheTimestampsFilePath)
-	if os.IsNotExist(err) {
-		return 0, fmt.Errorf("File '%s' does not exist.\n", packageCacheTimestampsFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, fmt.Errorf("package cache path %q does not exist: %w", packageCacheTimestampsFilePath, err)
+		}
+
+		return 0, fmt.Errorf("failed to stat package cache path %q: %w", packageCacheTimestampsFilePath, err)
 	}
 
 	return stats.ModTime().Unix(), nil

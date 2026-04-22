@@ -63,7 +63,7 @@ func main() {
 	apt_exporter.Register()
 	rpi_exporter.Register()
 
-	// Add a new goroutine to refresh metrics every 10 minutes
+	// Add a new goroutine to refresh metrics for textfile export.
 	var wg sync.WaitGroup
 
 	if *config.textFileExporterEnabledFlag {
@@ -114,22 +114,29 @@ func spawnFileWriter(wg *sync.WaitGroup, filePath string, interval time.Duration
 	wg.Add(1)
 
 	go func() {
+		defer wg.Done()
+
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
 		for {
 			log.Info("Writing metrics to file: ", filePath)
 			// Write latest metrics to file
 			err := prometheus.WriteToTextfile(filePath, prometheus.DefaultGatherer)
 			if err != nil {
-				log.Fatal(err)
+				log.WithError(err).Error("failed to write textfile metrics")
 			}
-			time.Sleep(interval)
+
+			<-ticker.C
 		}
 	}()
 }
 
 // serverMetrics exposes the metrics endpoint via HTTP.
 func serverMetrics(listenAddress, metricsPath string) error {
-	http.Handle(metricsPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.Handle(metricsPath, promhttp.Handler())
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`
 			<html>
 			<head><title>` + exporterDisplayName + `</title></head>
@@ -141,6 +148,15 @@ func serverMetrics(listenAddress, metricsPath string) error {
 		`))
 	})
 
+	server := &http.Server{
+		Addr:              listenAddress,
+		Handler:           mux,
+		ReadTimeout:       5 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
 	log.Printf("Starting Server on Port %s", listenAddress)
-	return http.ListenAndServe(listenAddress, nil)
+	return server.ListenAndServe()
 }
